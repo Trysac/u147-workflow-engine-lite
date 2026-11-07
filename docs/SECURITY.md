@@ -1,19 +1,8 @@
-# Security notes
+# Security Policy
 
-## Threat model
+## Threat Model
 
-`trysac-workflow-engine-lite` is a pure library without I/O. The main risks are:
-
-- **Supply chain**: a compromised dependency or CI action. Mitigation: no runtime dependencies,
-  Dependabot weekly updates, actions pinned to major versions, minimal workflow permissions.
-- **Leaked secrets**: tokens committed by mistake. Mitigation: `gitleaks` runs in the local gates
-  and in CI; `.env` files are git-ignored.
-- **Untrusted input**: callers may pass hostile strings. Mitigation: validate input and fail with
-  explicit exceptions; never `eval`, `exec` or deserialize untrusted data.
-
-## Publishing
-
-Releases are published to PyPI with trusted publishing (OIDC) when available, never with a
-long-lived token stored in the repository.
-
-To report a vulnerability, see [SECURITY.md](../SECURITY.md).
+- **Data Integrity**: Payload serialization is constrained by a 64 KiB byte limit for JSON representations. Payloads must serialize using `allow_nan=False`.
+- **Input Sanitization**: Identifiers (IDs and event types) are validated against the pattern `^[A-Za-z0-9_.:-]{1,200}$`. Event types prefixed with `__` are explicitly forbidden to prevent collision with reserved internal engine events (like `__timeout__`).
+- **Clock Security**: The engine validates that the `clock` callable returns timezone-aware datetimes. Naive datetimes are rejected with `invalid_clock` to prevent ambiguity in timeout calculations.
+- **Observability**: The `on_event` callback purposefully excludes business data payloads, transmitting only metadata (`instance_id`, `from`, `to`, `trigger`) to avoid leaking sensitive data into logs or monitoring endpoints.

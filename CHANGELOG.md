@@ -9,4 +9,5 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Implement durable workflow engine with MemoryStore, SqliteStore, timeouts, event deduplication, and optimistic concurrency.
 - Initial project structure from the factory utility template.

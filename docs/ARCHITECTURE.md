@@ -1,29 +1,18 @@
 # Architecture
 
-## Purpose
+## Overview
 
-`trysac-workflow-engine-lite` is a small, dependency-free Python library: Durable workflow instances as validated state machines: persisted state, event transitions, timeout timers fired by tick, event dedup and optimistic concurrency
+`trysac-workflow-engine-lite` provides a lightweight, durable state machine execution engine built using Python standard library primitives.
 
-## Shape
+## Core Concepts
 
-```text
-caller code --> workflow_engine_lite (public API in __init__.py)
-                    |
-                    +-- pure functions, no I/O, no global state
-```
+1. **WorkflowDef and State**: Declarations of state transitions and timeouts. Validated upon definition creation to guarantee integrity.
+2. **Instance**: A snapshot of an active or terminal workflow instance, including its current state, business data, history, version, and seen event IDs.
+3. **Store**: Protocol for persisting workflow instances. Supports `MemoryStore` for fast tests/single-process workloads and `SqliteStore` for durable persistence with row-level versioning.
+4. **Engine**: Drives workflows, enforces transition rules, deduplicates events, and triggers timeout transitions via `tick()`.
 
-- **Public API**: the names listed in `__all__` of `src/workflow_engine_lite/__init__.py`. Anything else is
-  internal and may change without a major version.
-- **Errors**: invalid input raises built-in exceptions (`ValueError`, `TypeError`) with a clear
-  message; the library never prints or exits.
-- **Side effects**: none. If a feature needs I/O, isolate it in its own module behind a small
-  interface and record the choice in an ADR.
+## Concurrency and Timers
 
-## Quality contract
-
-`scripts/check.py` is the single definition of the gates; `fabrica.json` tells the factory and CI
-how to run it. See [TESTING.md](TESTING.md).
-
-## Decisions
-
-Architecture decisions are recorded in [decisions/](decisions/) as numbered ADRs.
+- **Optimistic Concurrency**: Each state update checks `expected_version == stored_version`. Stale writes raise `concurrency_conflict`.
+- **Idempotency**: `send()` tracks `seen_event_ids` (capped at 1,000 entries). Duplicate event IDs return the instance unchanged with `outcome='duplicate'` without updating the database.
+- **Timeouts**: Due instances are queried by `deadline <= now` ordered by `(deadline, instance_id)`. Timeouts trigger an internal `__timeout__` transition with a unique event ID `__timeout__:<version>`, ensuring race safety during distributed tick executions.
