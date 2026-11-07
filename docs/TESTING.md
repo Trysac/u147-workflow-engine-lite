@@ -1,20 +1,11 @@
-# Testing
+# Testing Guide
 
-## Running
+## Coverage
 
-```sh
-uv run pytest --cov=workflow_engine_lite   # tests with coverage report
-uv run python scripts/check.py      # every gate, as CI and the factory run it
-```
+Tests are located in `tests/test_workflow_engine_lite.py`.
 
-## Policy
-
-- Branch coverage of `src/workflow_engine_lite` must stay at or above 80 %; the gate fails below it.
-- Tests exercise the public API (`import workflow_engine_lite`) and assert every observable effect:
-  return values, raised exceptions and their messages.
-- Each bug fix starts with a failing test that reproduces it.
-- Tests are deterministic: no network, no wall clock, no dependence on test order.
-
-## Layout
-
-`tests/test_<module>.py` mirrors each public module. Shared fixtures go in `tests/conftest.py`.
+- **Core Engine Logic**: Validation of workflow definitions (missing initials, invalid transitions, terminal state rules). 
+- **Lifecycle Tests**: `start` and `send` behavior including idempotency checks, transition constraints, and `terminal_state` enforcement.
+- **Concurrency Tests**: Verification that `MemoryStore` and `SqliteStore` handle `concurrency_conflict` correctly using `expected_version` checks.
+- **Timeouts**: Verification of the `tick()` logic, ensuring expired timeouts fire exactly once and trigger the defined `timeout_target`.
+- **Data Constraints**: Verification that data payloads exceeding 64 KiB raise `data_too_large` and that history and seen event IDs are capped at 100 and 1,000, respectively.

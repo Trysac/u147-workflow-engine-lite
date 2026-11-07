@@ -1,48 +1,42 @@
-# workflow-engine-lite
+# trysac-workflow-engine-lite
 
-[![PyPI version](https://img.shields.io/pypi/v/trysac-workflow-engine-lite)](https://pypi.org/project/trysac-workflow-engine-lite/)
-[![License: MIT](https://img.shields.io/pypi/l/trysac-workflow-engine-lite)](LICENSE)
-[![CI](https://github.com/Trysac/u147-workflow-engine-lite/actions/workflows/ci.yml/badge.svg)](https://github.com/Trysac/u147-workflow-engine-lite/actions/workflows/ci.yml)
+[![CI](https://github.com/Trysac/u147-workflow-engine-lite/actions/workflows/ci.yml/badge.svg)](https://github.com/Trysac/u147-workflow-engine-lite/actions)
 
-Durable workflow instances as validated state machines: persisted state, event transitions, timeout timers fired by tick, event dedup and optimistic concurrency
+Long-running business processes often end up as status columns, cron scripts, and scattered conditionals—leading to race conditions, double-fired timeouts, and difficult state tracking. `trysac-workflow-engine-lite` provides durable, declarative state machines with validated transition rules, event deduplication, optimistic concurrency, and pluggable persistence.
 
-## Problem
+## Installation
 
-Describe in two or three sentences the concrete problem this utility solves, who hits it, and what
-they do today without it. Replace this paragraph when the first real feature lands.
-
-## Install
-
-```sh
+```bash
 pip install trysac-workflow-engine-lite
-# or
-uv add trysac-workflow-engine-lite
 ```
-
-Requires Python 3.10 or newer. No runtime dependencies.
 
 ## Usage
 
 ```python
-import workflow_engine_lite
+from datetime import datetime, timezone, timedelta
+from workflow_engine_lite import Engine, MemoryStore, State, WorkflowDef
 
-# normalize() trims surrounding whitespace and lower-cases the text.
-print(workflow_engine_lite.normalize("  Hello World "))  # -> "hello world"
-
-# Blank input is rejected explicitly instead of returning an empty string.
-try:
-    workflow_engine_lite.normalize("   ")
-except ValueError as exc:
-    print(f"rejected: {exc}")
+wf = WorkflowDef(
+    "order",
+    1,
+    initial="s1",
+    states={"s1": State(transitions={"pay": "s2"}), "s2": State(terminal=True)},
+)
+engine = Engine(MemoryStore(), [wf], clock=lambda: datetime.now(timezone.utc))
+engine.start("order", "o-1")
+engine.send("o-1", "pay", event_id="e-1")
 ```
 
-## Documentation
+## API Summary
 
-- [Architecture](docs/ARCHITECTURE.md) and [decisions](docs/decisions/)
-- [Testing](docs/TESTING.md) and [security](docs/SECURITY.md)
-- [Project record](docs/PROJECT.md) and [stack](docs/STACK.md)
-- [Changelog](CHANGELOG.md) and [contributing guide](CONTRIBUTING.md)
+- **Engine**: Orchestrates instance lifecycle. Methods: `start(def_name, instance_id, data)`, `send(instance_id, event_type, payload, *, event_id)`, `tick(*, limit)`. 
+- **WorkflowDef**: Declarative schema for states and transitions. `__post_init__` validates definitions for dangling states, terminal rules, and timeout consistency.
+- **Storage**: `MemoryStore` (in-memory) and `SqliteStore` (persistence). Both implement the `Store` protocol with optimistic concurrency using `save(instance, expected_version)`.
+- **Errors**: `WorkflowError` with codes: `invalid_definition`, `unknown_definition`, `instance_exists`, `not_found`, `invalid_transition`, `terminal_state`, `concurrency_conflict`, `data_too_large`, `invalid_id`, `invalid_clock`.
+- **Limits**: 64 KiB per data payload (JSON), 100 history entries, 1,000 seen event IDs (for deduplication).
 
-## License
+## Why not Temporal?
 
-[MIT](LICENSE) (c) 2026 Miguel Gomez
+Full engines like Temporal are heavy for these cases. This library runs durable, declarative state machines with timers and exact transition rules on a stdlib store without distributed systems complexity.
+
+See [docs/SECURITY.md](docs/SECURITY.md) for security information.
