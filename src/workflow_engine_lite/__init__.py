@@ -328,7 +328,8 @@ class SqliteStore:
     def _deadline_from_iso(val: str | None) -> datetime | None:
         if val is None:
             return None
-        return datetime.fromisoformat(val).astimezone(timezone.utc)
+        # Python 3.10 fromisoformat does not accept "Z"; the stored form always ends in "Z".
+        return datetime.fromisoformat(val.replace("Z", "+00:00")).astimezone(timezone.utc)
 
     def create(self, instance: Instance) -> None:
         self.conn.execute("BEGIN IMMEDIATE")
