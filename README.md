@@ -6,8 +6,10 @@ Long-running business processes often end up as status columns, cron scripts, an
 
 ## Installation
 
+Not published to PyPI yet. Install it from GitHub:
+
 ```bash
-pip install trysac-workflow-engine-lite
+pip install "git+https://github.com/Trysac/u147-workflow-engine-lite"
 ```
 
 ## Usage
